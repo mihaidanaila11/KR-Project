@@ -50,7 +50,7 @@ class state:
       nodCurent = self
       while nodCurent != None:
         drum.append(nodCurent)
-        nodCurent = nodCurent.parinte
+        nodCurent = nodCurent.parent
 
       drum.reverse()
 
@@ -174,51 +174,64 @@ class state:
         
         return generated
     
-    def gameOver(self):
+    def isWinner(self, turn = None):
+        if turn is None:
+            turn = self.turn
+
         # Verificam daca mai avem mutari disponibile sau daca mai are piese pe tabla
         piese = 0
         for position in range(len(self.tabla)):
-            if self.tabla[position] == self.turn:
+            if self.tabla[position] == turn:
                 piese += 1
                 for connection in self.connections[position]:
                     if self.tabla[connection] == '':
                         return False
         
-        pieseDePus = self.pieseAlbastre if self.turn == 'x' else self.pieseRosii
-        if piese == 0 and pieseDePus == 0:
+        pieseDePus = self.pieseAlbastre if turn == 'x' else self.pieseRosii
+        if piese <= 2 and pieseDePus == 0:
             return True
         
         return True
     
     def _morrisNumber(self):
-        return sum(1 for moara in self.mori if all(self.tabla[i] == self.turn for i in moara))
+        return sum(1 for moara in self.mori if all(self.tabla[i] == 'x' for i in moara)) - sum(1 for moara in self.mori if all(self.tabla[i] == '0' for i in moara))
     
     def _blockedOpps(self):
-        opponent = "0" if self.turn == "x" else "x"
-        blocked_opponent_pieces = sum(
+        def getBlockedPieces(turn):
+            return sum(
             1
             for i in range(len(self.tabla))
-            if self.tabla[i] == opponent
+            if self.tabla[i] == turn
             and all(self.tabla[neighbor] != "" for neighbor in self.connections[i])
         )
+
         
-        return blocked_opponent_pieces
+        return getBlockedPieces('0') - getBlockedPieces('x')
     
     def _piecesNumber(self):
-        return sum([1 for i in range(len(self.tabla)) if self.tabla[i] == self.turn])
+        return sum([1 for i in range(len(self.tabla)) if self.tabla[i] == 'x']) - sum([1 for i in range(len(self.tabla)) if self.tabla[i] == '0'])
     
     def _twoPiecesConfig(self):
-        return sum(
+        def getTwoPiecesConfig(turn):
+            return sum(
             1
             for moara in self.mori
-            if sum(self.tabla[i] == self.turn for i in moara) == 2
+            if sum(self.tabla[i] == turn for i in moara) == 2
             and any(self.tabla[i] == "" for i in moara)
-        )
+            )
+        
+        return getTwoPiecesConfig('x') - getTwoPiecesConfig('0')
         
     def _threePiecesConfig(self):
-        return sum(
-            1 for moara in self.mori if all(self.tabla[i] == self.turn for i in moara)
-        )
+        def getThreePiecesConfig(turn):
+            return sum(
+            1
+            for moara in self.mori
+            if sum(self.tabla[i] == turn for i in moara) == 2 and any(self.tabla[i] == '' for i in moara)
+            )
+
+        return getThreePiecesConfig('x') - getThreePiecesConfig('0')
+        
         
     def _openMorris(self):
 
@@ -228,51 +241,44 @@ class state:
         )
         
     def _doubleMorris(self):
-        double_morris_count = 0
+        def getDoubleMorris(turn):
+            double_morris_count = 0
 
-        for position in range(len(self.tabla)):
-            if self.tabla[position] == self.turn:
-                morrises_with_position = [
-                    moara for moara in self.mori if position in moara
-                ]
+            for position in range(len(self.tabla)):
+                if self.tabla[position] == turn:
+                    morrises_with_position = [
+                        moara for moara in self.mori if position in moara
+                    ]
 
-                formed_morrises = sum(
-                    1 for moara in morrises_with_position if all(self.tabla[i] == self.turn for i in moara)
-                )
+                    formed_morrises = sum(
+                        1 for moara in morrises_with_position if all(self.tabla[i] == turn for i in moara)
+                    )
 
-                if formed_morrises >= 2:
-                    double_morris_count += 1
+                    if formed_morrises >= 2:
+                        double_morris_count += 1
 
-        return double_morris_count
-    
-    def _winning(self):
-        pass #TODO
-    
-    def eval(self, moaraFormata = False):
-        C1,C2,C3,C4,C5,C6,C7 = None, None, None, None, None, None, None
-        phase = None
+            return double_morris_count
         
+        return getDoubleMorris('x') - getDoubleMorris('0')
+    
+    
+    def eval(self, moaraFormata = 0):
+        # moaraFormata = 0 daca nicio moara nu s-a format
+        # moaraFormata = 1 daca s-a format o moara pe tura jucatorului max
+        # moaraFormata = 2 daca s-a format o moara pe tura jucatorului min
         if(self.pieseAlbastre + self.pieseRosii != 0):
             C1,C2,C3,C4,C5,C6 = (18, 26, 1, 6, 12, 7)
-            phase = 1
             
-            return C1 * moaraFormata + C2 * self._morrisNumber() + C3 * self._blockedOpps() + C4 * self._piecesNumber() + C5 * self._twoPiecesConfig() + C6 * self._threePiecesConfig()
+            return C1 * moaraFormata + C2 * self._morrisNumber() + C3 * self._blockedOpps() + C4 * self._piecesNumber() + C5 * self._twoPiecesConfig() + C6 * self._threePiecesConfig() 
             
         elif sum([1 for i in range(len(self.tabla)) if self.tabla[i] == self.turn]) > 3:
             C1,C2,C3,C4,C5,C6,C7 = (14, 43, 10, 8, 7, 42, 1086)
-            phase = 2
             
-            return C1 * moaraFormata + C2 * self._morrisNumber() + C3 * self._blockedOpps() + C4 * self._piecesNumber() + C5 * self._openMorris() + C6 * self._doubleMorris() + C7 * self._winning()
+            return C1 * moaraFormata + C2 * self._morrisNumber() + C3 * self._blockedOpps() + C4 * self._piecesNumber() + C5 * self._openMorris() + C6 * self._doubleMorris() + C7 * (1 if self.isWinner('x') else (-1 if self.isWinner('0') else 0))
         else:
             C1,C2,C3,C4 = (10, 1, 16, 1190)
-            phase = 3
-            
-        score = 0
-        
-    
-        
-    
-        return score
+
+            return C1 * self._twoPiecesConfig + C2 * self._threePiecesConfig + C3 * moaraFormata + C4 * (1 if self.isWinner('x') else (-1 if self.isWinner('0') else 0))
         
     def __str__(self):
         t = self.tabla  # for convenience
@@ -299,42 +305,81 @@ class state:
         return f"{self.tabla}"
     
 class minmax:
-    def __init__(self, startNode: state, adancime: int, alpha: int, beta: int):
-        self.nodCurent = startNode
+    def __init__(self, startNode: state, adancime: int, alpha: int, beta: int, algorithm):
+        self.startNode = startNode
         self.adancime = adancime
         self.alpha = alpha
         self.beta = beta
+        self.algorithm = True if algorithm == 'AlphaBeta' else False
         
     def __str__(self):
         return f"Adancime: {self.adancime}, Alpha: {self.alpha}, Beta: {self.beta}"
     
     def __repr__(self):
-        return f"{self.nodCurent}"
+        return f"{self.startNode}"
     
-    def minmax(self, position, adancime):
-        if adancime == 0 or position.gameOver():
+    def minmax(self, position: state, adancime: int, alpha, beta, turn):
+        if adancime == 0 or position.isWinner(turn) or position.vizitat():
             return position.eval()
-    
+        
+        if turn == 'x':
+            maxEval = float('-inf')
+            bestMove = None
+            for child in position.genSuccesori():
+                eval = self.minmax(child, adancime - 1, alpha, beta, '0')
+                if eval > maxEval:
+                    maxEval = eval
+                    bestMove = child
+
+                if self.algorithm:
+                    alpha = max(alpha, eval)
+                    if beta <= alpha:
+                        break
+            if adancime == self.adancime:
+                print(f"Next best move:\n{bestMove}")
+            return maxEval
+        else:
+            minEval = float('inf')
+            bestMove = None
+            for child in position.genSuccesori():
+                eval = self.minmax(child, adancime - 1, alpha, beta, 'x')
+                if eval < minEval:
+                    minEval = eval
+                    bestMove = child
+
+                if self.algorithm:
+                    beta = min(beta, eval)
+                    if beta <= alpha:
+                        break
+            if adancime == self.adancime:
+                print(f"Next best move:\n{bestMove}")
+            return minEval
 state1 = state(['','','','','','x','','','0','','x','x','0','x','','','','0','x','0','x','','0',''], 3, 4 )
 
+# test_state = state(
+#     [
+#         "x", "0", "x",     # 0  1  2
+#         "0", "x", "0",     # 3  4  5
+#         "x", "0", "x",     # 6  7  8
+#         "0", "", "x",     # 9 10 11
+#         "x", "", "",     #12 13 14
+#         "0", "x", "",     #15 16 17
+#         "0", "", "x",     #18 19 20
+#         "", "0", "0 "      #21 22 23
+#     ],
+#     pieseAlbastre=0,
+#     pieseRosii=0,
+#     turn='0'
+# )
+
+
 test_state = state(
-    [
-        "x", "0", "x",     # 0  1  2
-        "0", "x", "0",     # 3  4  5
-        "x", "0", "x",     # 6  7  8
-        "0", "", "x",     # 9 10 11
-        "x", "", "",     #12 13 14
-        "0", "x", "",     #15 16 17
-        "0", "", "x",     #18 19 20
-        "", "0", "0 "      #21 22 23
-    ],
-    pieseAlbastre=0,
-    pieseRosii=0,
-    turn='x'
+    ['','','','','','x','','','0','','x','x','0','x','','','','0','x','0','x','','0',''],
+    pieseAlbastre=3,
+    pieseRosii=4,
 )
+m = minmax(test_state, 3, float('-inf'), float('inf'), 'AlphaBeta')
 
-print(f"Initial state:\n{test_state}")
+print(test_state)
 
-for stare in test_state.genSuccesori():
-    print(stare)
-            
+m.minmax(m.startNode, m.adancime, float('-inf'), float('+inf'), m.startNode.turn)
