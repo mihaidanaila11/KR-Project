@@ -305,11 +305,9 @@ class state:
         return f"{self.tabla}"
     
 class minmax:
-    def __init__(self, startNode: state, adancime: int, alpha: int, beta: int, algorithm):
+    def __init__(self, startNode: state, adancime: int, algorithm):
         self.startNode = startNode
         self.adancime = adancime
-        self.alpha = alpha
-        self.beta = beta
         self.algorithm = True if algorithm == 'AlphaBeta' else False
         
     def __str__(self):
@@ -378,7 +376,7 @@ test_state = state(
     pieseAlbastre=3,
     pieseRosii=4,
 )
-m = minmax(test_state, 3, float('-inf'), float('inf'), 'AlphaBeta')
+m = minmax(test_state, 3, 'AlphaBeta')
 
 print(test_state)
 
