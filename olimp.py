@@ -83,7 +83,7 @@ class graph:
             closed[currentNode.infoNod] = currentNode.g
             
             if self._isGoal(currentNode):
-                print(f"gasit {currentNode.infoNod}")
+                print(f"{currentNode.infoNod}")
                 return currentNode
             
             for successor in currentNode.succesori:
@@ -102,18 +102,21 @@ class graph:
             pasi -= 1
         return None
     
-    def IDAStar(self):
-        def expandeaza(nodCurent: node, Limita):
+    def IDAStar(self, pasi):
+        def expandeaza(nodCurent: node, limit, pasi):
+            if pasi[0] <= 0:
+                return float('inf')
+            
             N_MAX = float('inf')
             f_curent = nodCurent.g + self._heuristic(nodCurent)
             nodCurent.f = f_curent
-            if f_curent > Limita:
+            if f_curent > limit:
                 return f_curent
             
             if self._isGoal(nodCurent):
                 drum_solutie = nodCurent.drumRadacina()
                 drumuri_afisate.append(nodCurent)
-                print(f"Solutie gasita: {[nod.infoNod for nod in drum_solutie]}")
+                print(f"{nodCurent.infoNod}")
                 return None
             
             LS = nodCurent.succesori
@@ -128,7 +131,8 @@ class graph:
                 succesor.g = nodCurent.g + self._euclidian(nodCurent, succesor)
                 succesor.parent = nodCurent
 
-                Lim_succesor = expandeaza(succesor, Limita)
+                pasi[0] -= 1
+                Lim_succesor = expandeaza(succesor, limit, pasi)
                 if Lim_succesor is None:
                     return None
                 if Lim_succesor < minim:
@@ -140,14 +144,18 @@ class graph:
             return minim if minim != float('inf') else float('inf')
 
         self.startNode.f = self.startNode.g + self._heuristic(self.startNode)
-        Limita = self.startNode.f
+        limit = self.startNode.f
         drumuri_afisate = []
 
+        pasi = [pasi]
         while True:
-            Limita_noua = expandeaza(self.startNode, Limita)
-            if Limita_noua is None or Limita_noua == float('inf'):
+            newLimit = expandeaza(self.startNode, limit, pasi)
+            if newLimit is None or newLimit == float('inf'):
                 break
-            Limita = Limita_noua
+            limit = newLimit
+
+        if pasi[0] <= 0:
+            print("Nodul tinta nu a fost atins in numarul dat de pasi.")
         return drumuri_afisate
     
 nodes_data = {
@@ -206,6 +214,6 @@ connections = {
 
 g = graph(7, [24], nodes_data, connections)
 
-# g.IDAStar()
+#g.IDAStar(3)
 
 g.AStar(2)
